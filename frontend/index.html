@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelID - Behavioral Authentication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+        
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .button:hover {
+            background: #5568d3;
+        }
+        
+        .toggle-button {
+            background: #764ba2;
+        }
+        
+        .toggle-button:hover {
+            background: #6b3f94;
+        }
+        
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            padding: 10px;
+            background: #fdeaea;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .success {
+            color: #27ae60;
+            font-size: 14px;
+            padding: 10px;
+            background: #eafaf1;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .events-log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .event-item {
+            padding: 10px;
+            background: white;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            border-left: 3px solid #27ae60;
+        }
+        
+        .event-item.anomaly {
+            border-left-color: #e74c3c;
+            background: #fdeaea;
+        }
+        
+        .confidence-bar {
+            background: #ddd;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .confidence-fill {
+            background: linear-gradient(90deg, #27ae60 0%, #667eea 100%);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="authForm" class="card">
+            <div class="header">
+                <h1>🛡️ SentinelID</h1>
+                <p>Adaptive Behavioral Authentication</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            <div class="success" id="success"></div>
+            
+            <div id="loginForm" class="auth-section">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter your username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password">
+                </div>
+                
+                <button class="button" onclick="handleLogin()">Login</button>
+                <button class="button toggle-button" onclick="toggleForm()">Create Account</button>
+            </div>
+            
+            <div id="registerForm" class="auth-section" style="display:none;">
+                <div class="form-group">
+                    <label for="regUsername">Username</label>
+                    <input type="text" id="regUsername" placeholder="Choose a username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" placeholder="Enter your email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" placeholder="Create a strong password">
+                </div>
+                
+                <button class="button" onclick="handleRegister()">Register</button>
+                <button class="button toggle-button" onclick="toggleForm()">Back to Login</button>
+            </div>
+        </div>
+        
+        <div id="dashboard" class="card dashboard">
+            <div class="dashboard-header">
+                <h1>Welcome, <span id="username"></span>! 👋</h1>
+                <p>Continuous Behavioral Authentication Active</p>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">Session Confidence</div>
+                    <div class="stat-value"><span id="confidence">100</span>%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Anomalies Detected</div>
+                    <div class="stat-value"><span id="anomalyCount">0</span></div>
+                </div>
+            </div>
+            
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceBar" style="width: 100%;">
+                    100%
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">Session Events</h3>
+            <div class="events-log" id="eventsList">
+                <p style="color: #999; font-size: 12px;">Monitoring keyboard, mouse, and navigation patterns...</p>
+            </div>
+            
+            <button class="button" onclick="handleLogout()" style="margin-top: 20px; background: #e74c3c;">Logout</button>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
