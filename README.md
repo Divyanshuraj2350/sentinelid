@@ -1,68 +1,63 @@
 
-🛡️ SentinelID - Adaptive Behavioral Authentication System
-Replace passwords and OTPs with continuous behavioral biometric authentication. Detect threats in real-time using AI-powered behavior analysis.
+# 🛡️ SentinelID - Adaptive Behavioral Authentication System
 
-Python
-Flask
-JavaScript
-License
+> Replace passwords and OTPs with continuous behavioral biometric authentication.
 
-🎯 Overview
-SentinelID is a revolutionary passwordless authentication system that uses behavioral biometrics to identify users. Instead of relying on passwords that can be stolen, we analyze:
+## 🎯 Overview
 
-Keystroke Dynamics - How you type (dwell time, flight time, pressure)
+SentinelID is a revolutionary passwordless authentication system that uses behavioral biometrics to identify users.
 
-Mouse Movement Patterns - Your unique cursor movements
+## 🌟 Key Features
 
-Navigation Behavior - How you interact with the interface
+- 🔐 Continuous Authentication
+- 📊 Behavioral Tracking (Keystroke + Mouse)
+- 🤖 AI-Powered Anomaly Detection
+- 🎨 Beautiful Responsive UI
+- 🔒 Secure JWT Authentication
 
-Session Patterns - Real-time anomaly detection
+## 🚀 Quick Start
 
-Why SentinelID?
-Traditional Auth	SentinelID
-❌ Passwords can be hacked	✅ Biometric - can't be stolen
-❌ Phishing attacks work	✅ Behavior-based immunity
-❌ Single login point	✅ Continuous authentication
-❌ Manual 2FA required	✅ Automatic verification
-❌ No threat detection	✅ Real-time anomaly alerts
-🌟 Key Features
-🔐 Continuous Authentication
-Monitors user behavior continuously during session
+### Prerequisites
+- Python 3.9+
+- Git
 
-No login needed after initial verification
+### Installation
 
-Automatic logout on anomaly detection
+### Running
 
-📊 Behavioral Tracking
-Keystroke Analysis:
+**Terminal 1 (Backend):**
 
-Dwell time (key hold duration)
+**Terminal 2 (Frontend):**
+### Access
+- Frontend: http://localhost:8000
+- Backend API: http://127.0.0.1:5000
 
-Flight time (time between keystrokes)
+## 🔌 API Endpoints
 
-Pressure patterns
+### Authentication
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/logout
 
-Mouse Dynamics:
+### Behavioral Tracking
+- POST /api/behavioral/keystroke
+- POST /api/behavioral/mouse
 
-Movement speed
+### Anomaly Detection
+- POST /api/anomaly/check
+- GET /api/admin/active-sessions
 
-Acceleration patterns
+## 📊 Technology Stack
 
-Click intervals
+- Backend: Flask, Python, SQLAlchemy
+- Frontend: HTML5, CSS3, JavaScript
+- Database: SQLite
+- Authentication: JWT
 
-Navigation Flow:
+## 📄 License
 
-Page visit sequence
+MIT License
 
-Time spent on pages
+## 👨‍💻 Author
 
-User journey patterns
-
-🤖 AI-Powered Anomaly Detection
-Machine learning-based threat detection
-
-Confidence scoring (0-100%)
-
-Real-time alert system
-
-Automatic session terminatio
+Divyanshu Raj - [@Divyanshuraj2350](https://github.com/Divyanshuraj2350)
