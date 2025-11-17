@@ -32,6 +32,9 @@ jwt = JWTManager(app)
 with app.app_context():
     db.create_all()
 
+
+# ========== AUTHENTICATION ROUTES ==========
+
 @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
 def register():
     if request.method == 'OPTIONS':
@@ -55,6 +58,7 @@ def register():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     if request.method == 'OPTIONS':
@@ -71,6 +75,7 @@ def login():
     db.session.commit()
     return jsonify({'access_token': access_token, 'user_id': user.id, 'username': user.username, 'session_id': session.id, 'message': 'Login successful'}), 200
 
+
 @app.route('/api/auth/logout', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def logout():
@@ -82,6 +87,9 @@ def logout():
         active_session.is_active = False
         db.session.commit()
     return jsonify({'message': 'Logged out successfully'}), 200
+
+
+# ========== BEHAVIORAL LOGGING ROUTES ==========
 
 @app.route('/api/behavioral/keystroke', methods=['POST', 'OPTIONS'])
 @jwt_required()
@@ -102,6 +110,7 @@ def log_keystroke():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/behavioral/mouse', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def log_mouse():
@@ -121,89 +130,13 @@ def log_mouse():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/anomaly/check', methods=['POST', 'OPTIONS'])
-@jwt_required()
-def check_anomaly():
-    if request.method == 'OPTIONS':
-        return '', 204
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    session = Session.query.filter_by(user_id=user_id, is_active=True).first()
-    if not session:
-        return jsonify({'error': 'No active session'}), 401
-    anomaly_score = data.get('anomaly_score', 0.0)
-    is_anomalous = anomaly_score > 0.7
-    if is_anomalous:
-        alert = AnomalyAlert(session_id=session.id, alert_type=data.get('type', 'behavioral_anomaly'), severity='medium' if anomaly_score < 0.85 else 'high', description=f"Anomaly detected: {data.get('description')}", anomaly_score=anomaly_score)
-        db.session.add(alert)
-        session.anomaly_count += 1
-        session.current_confidence = max(0, 100 - (anomaly_score * 100))
-        db.session.commit()
-    return jsonify({'is_anomalous': is_anomalous, 'anomaly_score': anomaly_score, 'session_confidence': session.current_confidence, 'action': 'BLOCK' if is_anomalous and anomaly_score > 0.9 else 'MONITOR'}), 200
 
-@app.route('/api/admin/active-sessions', methods=['GET', 'OPTIONS'])
-def get_active_sessions():
-    if request.method == 'OPTIONS':
-        return '', 204
-    active_sessions = Session.query.filter_by(is_active=True).all()
-    return jsonify({'total_active': len(active_sessions), 'sessions': [{'session_id': s.id, 'user_id': s.user_id, 'login_time': s.login_time.isoformat(), 'current_confidence': s.current_confidence, 'anomaly_count': s.anomaly_count, 'is_compromised': s.is_compromised, 'event_count': len(s.behavioral_events)} for s in active_sessions]}), 200
-
-@app.route('/api/admin/alerts', methods=['GET', 'OPTIONS'])
-def get_alerts():
-    if request.method == 'OPTIONS':
-        return '', 204
-    limit = request.args.get('limit', 20, type=int)
-    alerts = AnomalyAlert.query.filter_by(resolved=False).order_by(AnomalyAlert.created_at.desc()).limit(limit).all()
-    return jsonify({'total_alerts': len(alerts), 'alerts': [{'alert_id': a.id, 'session_id': a.session_id, 'alert_type': a.alert_type, 'severity': a.severity, 'description': a.description, 'anomaly_score': a.anomaly_score, 'created_at': a.created_at.isoformat()} for a in alerts]}), 200
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-@app.errorhandler(500)
-def server_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
-# ========== ANOMALY DETECTION ROUTES ==========
-
-@app.route('/api/anomaly/check', methods=['POST'])
-@jwt_required()
-def anomaly_check():
-    """Check current behavior against baseline"""
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        
-        # Extract feature vector from request
-        # Expected: {"features": [wpm, dwell_time_avg, flight_time_avg, keystroke_variance, mouse_speed]}
-        features = data.get('features', [])
-        
-        if not features or len(features) == 0:
-            return jsonify({'confidence': 85.0, 'msg': 'No features provided'}), 400
-        
-        # Score using ML model
-        from ml_models import behavioral_model
-        confidence = behavioral_model.score(features)
-        
-        # Log the check
-        print(f"[ANOMALY CHECK] User: {user_id}, Features: {features}, Confidence: {confidence}")
-        
-        return jsonify({
-            'confidence': confidence,
-            'status': 'ok',
-            'anomaly_detected': confidence < 50
-        }), 200
-    
-    except Exception as e:
-        print(f"❌ Error in anomaly_check: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/behavioral/train_baseline', methods=['POST'])
+@app.route('/api/behavioral/train_baseline', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def train_baseline():
     """Train anomaly detection model on user's baseline behavior"""
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         user_id = get_jwt_identity()
         data = request.get_json()
@@ -233,27 +166,13 @@ def train_baseline():
         print(f"❌ Error in train_baseline: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/model-status', methods=['GET'])
-@jwt_required()
-def model_status():
-    """Check if model is trained"""
-    try:
-        from ml_models import behavioral_model
-        is_trained = behavioral_model.model is not None
-        return jsonify({
-            'model_trained': is_trained,
-            'model_path': behavioral_model.model_path
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-
-# ========== SPELL CHECK ROUTE ==========
-
-@app.route('/api/behavioral/text-quality', methods=['POST'])
+@app.route('/api/behavioral/text-quality', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def text_quality():
     """Check text quality and spelling"""
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json()
         text = data.get('text', '')
@@ -275,28 +194,145 @@ def text_quality():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ========== SPELL CHECK ROUTE ==========
 
-@app.route('/api/behavioral/text-quality', methods=['POST'])
+# ========== ANOMALY DETECTION ROUTES ==========
+
+@app.route('/api/anomaly/check', methods=['POST', 'OPTIONS'])
 @jwt_required()
-def text_quality():
-    """Check text quality and spelling"""
+def check_anomaly():
+    """Check current behavior against baseline and detect anomalies"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
+        user_id = get_jwt_identity()
         data = request.get_json()
-        text = data.get('text', '')
         
-        from spell_check import check_text_quality, is_gibberish
+        # Get active session
+        session = Session.query.filter_by(user_id=user_id, is_active=True).first()
+        if not session:
+            return jsonify({'error': 'No active session'}), 401
         
-        quality = check_text_quality(text)
-        gibberish = is_gibberish(text)
+        # Extract features if provided
+        features = data.get('features', [])
         
-        confidence_penalty = 0 if not gibberish else 50
+        # Calculate anomaly score
+        if features and len(features) > 0:
+            # Use ML model if features provided
+            from ml_models import behavioral_model
+            confidence = behavioral_model.score(features)
+            anomaly_score = 1.0 - (confidence / 100.0)  # Convert confidence to anomaly score
+            print(f"[ANOMALY CHECK] User: {user_id}, Features: {features}, Confidence: {confidence}, Anomaly Score: {anomaly_score}")
+        else:
+            # Use provided anomaly score or default
+            anomaly_score = data.get('anomaly_score', 0.0)
+        
+        # Determine if anomalous
+        is_anomalous = anomaly_score > 0.7
+        
+        # Log anomaly if detected
+        if is_anomalous:
+            alert = AnomalyAlert(
+                session_id=session.id, 
+                alert_type=data.get('type', 'behavioral_anomaly'), 
+                severity='medium' if anomaly_score < 0.85 else 'high', 
+                description=f"Anomaly detected: {data.get('description', 'Unusual behavior pattern detected')}", 
+                anomaly_score=anomaly_score
+            )
+            db.session.add(alert)
+            session.anomaly_count += 1
+            session.current_confidence = max(0, 100 - (anomaly_score * 100))
+            db.session.commit()
+        
+        # Determine action
+        action = 'BLOCK' if is_anomalous and anomaly_score > 0.9 else 'MONITOR'
         
         return jsonify({
-            'text_quality': quality,
-            'is_gibberish': gibberish,
-            'confidence_penalty': confidence_penalty
+            'is_anomalous': is_anomalous, 
+            'anomaly_score': round(anomaly_score, 3), 
+            'confidence': round(session.current_confidence, 2),
+            'session_confidence': round(session.current_confidence, 2), 
+            'action': action,
+            'status': 'ok',
+            'anomaly_detected': is_anomalous
         }), 200
     
     except Exception as e:
+        print(f"❌ Error in check_anomaly: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# ========== ADMIN ROUTES ==========
+
+@app.route('/api/admin/active-sessions', methods=['GET', 'OPTIONS'])
+def get_active_sessions():
+    if request.method == 'OPTIONS':
+        return '', 204
+    active_sessions = Session.query.filter_by(is_active=True).all()
+    return jsonify({
+        'total_active': len(active_sessions), 
+        'sessions': [{
+            'session_id': s.id, 
+            'user_id': s.user_id, 
+            'login_time': s.login_time.isoformat(), 
+            'current_confidence': s.current_confidence, 
+            'anomaly_count': s.anomaly_count, 
+            'is_compromised': s.is_compromised, 
+            'event_count': len(s.behavioral_events)
+        } for s in active_sessions]
+    }), 200
+
+
+@app.route('/api/admin/alerts', methods=['GET', 'OPTIONS'])
+def get_alerts():
+    if request.method == 'OPTIONS':
+        return '', 204
+    limit = request.args.get('limit', 20, type=int)
+    alerts = AnomalyAlert.query.filter_by(resolved=False).order_by(AnomalyAlert.created_at.desc()).limit(limit).all()
+    return jsonify({
+        'total_alerts': len(alerts), 
+        'alerts': [{
+            'alert_id': a.id, 
+            'session_id': a.session_id, 
+            'alert_type': a.alert_type, 
+            'severity': a.severity, 
+            'description': a.description, 
+            'anomaly_score': a.anomaly_score, 
+            'created_at': a.created_at.isoformat()
+        } for a in alerts]
+    }), 200
+
+
+@app.route('/api/admin/model-status', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def model_status():
+    """Check if ML model is trained"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        from ml_models import behavioral_model
+        is_trained = behavioral_model.model is not None
+        return jsonify({
+            'model_trained': is_trained,
+            'model_path': behavioral_model.model_path
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ========== ERROR HANDLERS ==========
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+# ========== MAIN ENTRY POINT ==========
+
+if __name__ == '__main__':
+    app.run(debug=True, host='127.0.0.1', port=5000)
